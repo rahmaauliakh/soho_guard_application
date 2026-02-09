@@ -436,7 +436,7 @@ header_frame.pack(pady=20, fill="x", padx=20)
 # Logo/Title
 title_label = tk.Label(
     header_frame, 
-    text="🛡️ SOHO GUARD",
+    text="SOHO GUARD",
     font=("Segoe UI", 28, "bold"),
     fg=COLORS["primary"],
     bg=COLORS["dark_bg"]
