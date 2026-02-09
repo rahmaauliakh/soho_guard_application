@@ -89,6 +89,17 @@ def apply_theme():
     for widget in scrollable_frame.winfo_children():
         update_widget_theme(widget, theme)
 
+    # Update Combobox Style
+    style = ttk.Style()
+    style.theme_use('default')
+    style.map('TCombobox',
+              fieldbackground=[('readonly', theme["surface"])],
+              selectbackground=[('readonly', theme["surface"])],
+              selectforeground=[('readonly', theme["fg"])],
+              background=[('readonly', theme["surface"])],
+              foreground=[('readonly', theme["fg"])],
+              arrowcolor=[('readonly', theme["fg"])]) # Attempt to color arrow if supported
+
 def update_widget_theme(widget, theme):
     widget_class = widget.winfo_class()
     
@@ -251,16 +262,21 @@ def generate_subnet():
     """
     global internal_subnet, guest_subnet
     try:
-        # Ambil input network dari user (contoh: 192.168.1.0/24)
-        network_input = entry_network.get()
+        # Ambil input IP dan Subnet Mask dari user
+        ip_input = entry_ip.get()
+        mask_input = combo_mask.get()
+        
+        # Gabungkan menjadi format CIDR (contoh: 192.168.1.0/24)
+        network_input = f"{ip_input}/{mask_input}"
         
         # Konversi string menjadi objek ip_network
         # strict=False: mengizinkan host bits (misal 192.168.1.5/24)
         network = ipaddress.ip_network(network_input, strict=False)
 
-        # SUBNETTING: Membagi /24 menjadi 2 subnet /25
-        # /24 = 256 IP -> dibagi 2 -> masing-masing /25 = 128 IP
-        subnets = list(network.subnets(new_prefix=25))
+        # SUBNETTING: Membagi network menjadi 2 subnet yang lebih kecil
+        # Contoh: /24 dibagi menjadi 2 subnet /25
+        # new_prefix = network.prefixlen + 1
+        subnets = list(network.subnets(new_prefix=network.prefixlen + 1))
         internal_subnet, guest_subnet = subnets  # Subnet pertama = internal, kedua = guest
 
         # Mendapatkan daftar host yang bisa dipakai di setiap subnet
@@ -378,7 +394,7 @@ def generate_pdf_report():
 root = tk.Tk()
 root.title("SOHO Guard - Network Security")
 root.geometry("900x780")
-root.minsize(600, 500)  # Minimum size
+root.minsize(360, 600)  # Minimum size updated for mobile
 root.configure(bg=COLORS["dark_bg"])
 
 # Configure grid weights for responsiveness
@@ -472,7 +488,7 @@ input_title.pack(anchor="w")
 
 input_subtitle = tk.Label(
     input_card,
-    text="IP Network (contoh: 192.168.1.0/24)",
+    text="Masukkan IP Address dan Pilih Subnet Mask",
     font=("Segoe UI", 10),
     fg=COLORS["text_muted"],
     bg=COLORS["dark_card"]
@@ -480,8 +496,27 @@ input_subtitle = tk.Label(
 input_subtitle.is_muted = True
 input_subtitle.pack(anchor="w", pady=(10, 5))
 
-entry_network = tk.Entry(
-    input_card,
+input_fields_frame = tk.Frame(input_card, bg=COLORS["dark_card"])
+input_fields_frame.pack(anchor="w", fill="x", pady=(0, 5))
+
+# Configure grid weights
+input_fields_frame.grid_columnconfigure(0, weight=7)
+input_fields_frame.grid_columnconfigure(1, weight=3)
+
+# IP Address Input
+ip_frame = tk.Frame(input_fields_frame, bg=COLORS["dark_card"])
+ip_frame.grid(row=0, column=0, sticky="ew", padx=(0, 10))
+
+tk.Label(
+    ip_frame,
+    text="IP Address",
+    font=("Segoe UI", 10),
+    fg=COLORS["text_muted"],
+    bg=COLORS["dark_card"]
+).pack(anchor="w")
+
+entry_ip = tk.Entry(
+    ip_frame,
     font=("Consolas", 12),
     bg=COLORS["dark_surface"],
     fg=COLORS["text_light"],
@@ -491,7 +526,39 @@ entry_network = tk.Entry(
     highlightbackground=COLORS["dark_border"],
     highlightcolor=COLORS["primary"]
 )
-entry_network.pack(anchor="w", fill="x", ipady=8)
+entry_ip.pack(anchor="w", fill="x", ipady=8)
+
+# Subnet Mask Input (Combobox)
+mask_frame = tk.Frame(input_fields_frame, bg=COLORS["dark_card"])
+mask_frame.grid(row=0, column=1, sticky="ew", padx=(10, 0))
+
+tk.Label(
+    mask_frame,
+    text="Subnet Mask",
+    font=("Segoe UI", 10),
+    fg=COLORS["text_muted"],
+    bg=COLORS["dark_card"]
+).pack(anchor="w")
+
+combo_mask = ttk.Combobox(
+    mask_frame,
+    values=[str(i) for i in range(8, 31)], # CIDR /8 to /30
+    font=("Consolas", 12),
+    state="readonly",
+    width=5
+)
+combo_mask.set("24") # Default to /24
+combo_mask.pack(anchor="w", fill="x", ipady=8)
+
+# Style for Combobox (needs some wrestling with ttk styles)
+style = ttk.Style()
+style.theme_use('default')
+style.map('TCombobox', fieldbackground=[('readonly', COLORS["dark_surface"])],
+                      selectbackground=[('readonly', COLORS["dark_surface"])],
+                      selectforeground=[('readonly', COLORS["text_light"])],
+                      background=[('readonly', COLORS["dark_surface"])],
+                      foreground=[('readonly', COLORS["text_light"])])
+
 
 # Generate Button
 generate_btn_frame = tk.Frame(input_card, bg=COLORS["dark_card"])
@@ -733,7 +800,7 @@ def adjust_layout(event=None):
         internal_card.grid(row=0, column=0, columnspan=2, sticky="ew", padx=0, pady=5)
         guest_card.grid(row=1, column=0, columnspan=2, sticky="ew", padx=0, pady=5)
         
-        # Stack traffic inputs vertically
+        # Stack traffic simulation inputs vertically
         src_container.grid(row=0, column=0, columnspan=2, sticky="ew", padx=0, pady=(0, 10))
         dst_container.grid(row=1, column=0, columnspan=2, sticky="ew", padx=0, pady=0)
     else:
@@ -743,6 +810,15 @@ def adjust_layout(event=None):
         
         src_container.grid(row=0, column=0, columnspan=1, sticky="ew", padx=(0, 10))
         dst_container.grid(row=0, column=1, columnspan=1, sticky="ew", padx=(10, 0))
+
+    if width < 450:
+         # Stack network input fields vertically very small screens
+        ip_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=0, pady=(0, 10))
+        mask_frame.grid(row=1, column=0, columnspan=2, sticky="ew", padx=0, pady=0)
+    else:
+        # Side by side for network inputs
+        ip_frame.grid(row=0, column=0, columnspan=1, sticky="ew", padx=(0, 10), pady=0)
+        mask_frame.grid(row=0, column=1, columnspan=1, sticky="ew", padx=(10, 0), pady=0)
 
 # Bind resize event
 root.bind("<Configure>", adjust_layout)
