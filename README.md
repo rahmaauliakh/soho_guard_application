@@ -1,1 +1,1 @@
-logo <img width="549" height="537" alt="image" src="https://github.com/user-attachments/assets/b1cef921-6e20-402f-86b7-b2b4a3628c02" />
+<img width="549" height="537" alt="logosoho" src="https://github.com/user-attachments/assets/bfaeef22-0228-4006-99a9-e98797681b27" />
