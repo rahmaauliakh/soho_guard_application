@@ -443,6 +443,17 @@ title_label = tk.Label(
 )
 title_label.pack()
 
+# Try to load logo image
+try:
+    logo_path = "logo.png"
+    if os.path.exists(logo_path):
+        # Keep reference to prevent GC
+        logo_image = tk.PhotoImage(file=logo_path)
+        # Set as window icon
+        root.iconphoto(False, logo_image)
+except Exception as e:
+    print(f"Error loading logo: {e}")
+
 subtitle_label = tk.Label(
     header_frame,
     text="Network Segmentation & Security Simulator",
